@@ -38,10 +38,10 @@ export class MenuScene extends Phaser.Scene {
     });
 
     this.input.keyboard!.on('keydown-ENTER', () => {
-      this.scene.start('GameScene');
+      this.scene.start('GameScene', {});
     });
     this.input.keyboard!.on('keydown-SPACE', () => {
-      this.scene.start('GameScene');
+      this.scene.start('GameScene', {});
     });
   }
 }

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { HealthSystem } from '../logic/systems/health-system';
 import type { ScoringSystem } from '../logic/systems/scoring-system';
+import type { LevelManager } from '../logic/level/level-manager';
 
 export class HudRenderer {
   private hpBarBg: Phaser.GameObjects.Rectangle;
@@ -9,8 +10,11 @@ export class HudRenderer {
   private scoreText: Phaser.GameObjects.Text;
   private coinText: Phaser.GameObjects.Text;
   private powerUpText: Phaser.GameObjects.Text;
+  private levelText: Phaser.GameObjects.Text;
+  private levelManager: LevelManager;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, levelManager: LevelManager) {
+    this.levelManager = levelManager;
     this.hpBarBg = scene.add.rectangle(20, 20, 200, 20, 0x333333)
       .setOrigin(0, 0)
       .setScrollFactor(0)
@@ -40,6 +44,13 @@ export class HudRenderer {
       fontSize: '20px',
       color: '#00ffff',
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(100);
+
+    this.levelText = scene.add.text(400, 20, '', {
+      fontSize: '16px',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2,
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(100);
   }
 
   update(health: HealthSystem, scoring?: ScoringSystem): void {
@@ -55,6 +66,7 @@ export class HudRenderer {
     }
 
     this.livesText.setText(`Lives: ${health.lives}`);
+    this.levelText.setText(`Level ${this.levelManager.currentLevelIndex + 1}`);
 
     if (scoring) {
       this.scoreText.setText(`Score: ${scoring.score}`);

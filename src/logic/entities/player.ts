@@ -13,6 +13,14 @@ export class Player extends Entity {
 
   private input: PlayerInput = { left: false, right: false, jump: false };
   private jumpWasPressed: boolean = false;
+  private coyoteTimer: number = 0;
+  private jumpBufferTimer: number = 0;
+
+  private static readonly COYOTE_TIME = 0.1;
+  private static readonly JUMP_BUFFER_TIME = 0.1;
+  private static readonly KNOCKBACK_DURATION = 0.25;
+
+  private knockbackTimer: number = 0;
 
   constructor(config: { x: number; y: number }) {
     super({ x: config.x, y: config.y, width: 48, height: 48 });
@@ -22,9 +30,18 @@ export class Player extends Entity {
     this.input = input;
   }
 
-  update(_dt: number): void {
-    this.updateHorizontalMovement();
-    this.updateJump();
+  applyKnockback(force: number): void {
+    this.velocityX = force;
+    this.knockbackTimer = Player.KNOCKBACK_DURATION;
+  }
+
+  update(dt: number): void {
+    if (this.knockbackTimer > 0) {
+      this.knockbackTimer -= dt;
+    } else {
+      this.updateHorizontalMovement();
+    }
+    this.updateJump(dt);
   }
 
   land(surfaceY: number): void {
@@ -45,12 +62,30 @@ export class Player extends Entity {
     }
   }
 
-  private updateJump(): void {
+  private updateJump(dt: number): void {
     const jumpPressed = this.input.jump;
 
-    if (jumpPressed && !this.jumpWasPressed && this.isGrounded) {
+    // Track coyote time
+    if (this.isGrounded) {
+      this.coyoteTimer = Player.COYOTE_TIME;
+    } else {
+      this.coyoteTimer = Math.max(0, this.coyoteTimer - dt);
+    }
+
+    // Track jump buffer
+    if (jumpPressed && !this.jumpWasPressed) {
+      this.jumpBufferTimer = Player.JUMP_BUFFER_TIME;
+    } else {
+      this.jumpBufferTimer = Math.max(0, this.jumpBufferTimer - dt);
+    }
+
+    const canJump = this.isGrounded || this.coyoteTimer > 0;
+
+    if (canJump && this.jumpBufferTimer > 0) {
       this.velocityY = PHYSICS.playerJumpPower;
       this.isGrounded = false;
+      this.coyoteTimer = 0;
+      this.jumpBufferTimer = 0;
     }
 
     this.jumpWasPressed = jumpPressed;

@@ -104,15 +104,56 @@ describe('Player', () => {
       expect(player.isGrounded).toBe(false);
     });
 
-    it('should not jump when already in the air', () => {
+    it('should not jump when already in the air past coyote time', () => {
       const player = createPlayer();
       player.isGrounded = false;
       player.velocityY = 50;
+
+      // Drain coyote time
+      player.setInput({ left: false, right: false, jump: false });
+      player.update(0.2);
 
       player.setInput({ left: false, right: false, jump: true });
       player.update(0.016);
 
       expect(player.velocityY).toBe(50); // unchanged
+    });
+
+    it('should jump within coyote time after leaving ground', () => {
+      const player = createPlayer();
+
+      // Player was grounded, now leaves ground
+      player.setInput({ left: false, right: false, jump: false });
+      player.update(0.016);
+      player.isGrounded = false; // walked off edge
+
+      // Press jump within coyote window
+      player.setInput({ left: false, right: false, jump: true });
+      player.update(0.016);
+
+      expect(player.velocityY).toBe(PHYSICS.playerJumpPower);
+    });
+
+    it('should buffer jump input and execute on landing', () => {
+      const player = createPlayer();
+      player.isGrounded = false;
+      player.velocityY = 50;
+
+      // Drain coyote time
+      player.setInput({ left: false, right: false, jump: false });
+      player.update(0.2);
+
+      // Press jump while in air (buffer it)
+      player.setInput({ left: false, right: false, jump: true });
+      player.update(0.016);
+      expect(player.velocityY).toBe(50); // still falling
+
+      // Land
+      player.isGrounded = true;
+      player.velocityY = 0;
+      player.update(0.016); // jump still held, should trigger from buffer
+
+      expect(player.velocityY).toBe(PHYSICS.playerJumpPower);
     });
 
     it('should not re-trigger jump if jump is held across frames', () => {
@@ -151,6 +192,31 @@ describe('Player', () => {
       player.setInput({ left: false, right: false, jump: true });
       player.update(0.016);
       expect(player.velocityY).toBe(PHYSICS.playerJumpPower);
+    });
+  });
+
+  describe('knockback', () => {
+    it('should override input during knockback', () => {
+      const player = createPlayer();
+
+      player.applyKnockback(300);
+      player.setInput({ left: false, right: true, jump: false });
+      player.update(0.016);
+
+      expect(player.velocityX).toBe(300); // knockback, not playerSpeed
+    });
+
+    it('should decay knockback over time and restore input', () => {
+      const player = createPlayer();
+
+      player.applyKnockback(300);
+      // Run enough frames for knockback to expire
+      for (let i = 0; i < 20; i++) {
+        player.setInput({ left: false, right: true, jump: false });
+        player.update(0.016);
+      }
+
+      expect(player.velocityX).toBe(PHYSICS.playerSpeed);
     });
   });
 

@@ -44,9 +44,22 @@ export class HealthSystem {
     return true;
   }
 
+  kill(): void {
+    this.hp = 0;
+    this.lives--;
+    this.isDead = true;
+    if (this.lives <= 0) {
+      this.isGameOver = true;
+    }
+  }
+
   respawn(): void {
     this.hp = this.maxHP;
     this.isDead = false;
+  }
+
+  get isInvulnerable(): boolean {
+    return this.cooldownTimer > 0;
   }
 
   computeKnockback(entityX: number, sourceX: number, force: number): number {

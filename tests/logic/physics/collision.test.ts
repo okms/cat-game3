@@ -74,7 +74,7 @@ describe('resolveTopCollision', () => {
 
     resolveTopCollision(entity, platform);
 
-    expect(entity.y).toBe(platform.y - entity.height);
+    expect(entity.y).toBe(platform.y - entity.height + 0.5);
     expect(entity.velocityY).toBe(0);
   });
 });

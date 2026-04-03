@@ -31,6 +31,8 @@ export function detectCollisionSide(mover: Entity, obstacle: Entity): CollisionS
 }
 
 export function resolveTopCollision(entity: Entity, platform: Entity): void {
-  entity.y = platform.y - entity.height;
+  // Nudge 0.5px into the platform so aabbOverlap (strict >) still detects
+  // contact next frame, preventing isGrounded from flickering.
+  entity.y = platform.y - entity.height + 0.5;
   entity.velocityY = 0;
 }

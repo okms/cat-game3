@@ -49,6 +49,7 @@ export class GameScene extends Phaser.Scene {
   private platformEntities: Entity[] = [];
   private doorEntity!: Entity;
   private levelComplete: boolean = false;
+  private deathPending: boolean = false;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -56,6 +57,7 @@ export class GameScene extends Phaser.Scene {
 
   create(data: GameSceneData): void {
     this.levelComplete = false;
+    this.deathPending = false;
 
     this.levelManager = data.levelManager ?? new LevelManager(ALL_LEVELS);
     this.healthSystem = data.healthSystem ?? new HealthSystem({
@@ -148,7 +150,7 @@ export class GameScene extends Phaser.Scene {
       return sprite;
     });
 
-    this.hudRenderer = new HudRenderer(this);
+    this.hudRenderer = new HudRenderer(this, this.levelManager);
 
     // Level name display
     const levelLabel = this.add.text(GAME_WIDTH / 2, 100, levelData.name, {
@@ -170,22 +172,26 @@ export class GameScene extends Phaser.Scene {
 
     const dt = delta / 1000;
 
-    if (this.healthSystem.isDead) {
-      if (this.healthSystem.isGameOver) {
-        this.scene.start('GameOverScene', {
-          score: this.scoringSystem.score,
-          coins: this.scoringSystem.coins,
-        });
-        return;
-      }
-      this.healthSystem.respawn();
-      const levelData = this.levelManager.currentLevel;
-      this.player.x = levelData.playerSpawn.x;
-      this.player.y = levelData.playerSpawn.y;
-      this.player.velocityX = 0;
-      this.player.velocityY = 0;
-      this.player.isGrounded = true;
+    if (this.healthSystem.isDead && !this.deathPending) {
+      this.deathPending = true;
+      this.time.delayedCall(800, () => {
+        if (this.healthSystem.isGameOver) {
+          this.scene.start('GameOverScene', {
+            score: this.scoringSystem.score,
+            coins: this.scoringSystem.coins,
+          });
+          return;
+        }
+        this.healthSystem.respawn();
+        this.scene.restart({
+          levelManager: this.levelManager,
+          healthSystem: this.healthSystem,
+          scoringSystem: this.scoringSystem,
+        } as GameSceneData);
+      });
+      return;
     }
+    if (this.deathPending) return;
 
     this.healthSystem.update(dt);
     this.scoringSystem.update(dt);
@@ -197,6 +203,12 @@ export class GameScene extends Phaser.Scene {
       this.physicsWorld.applyGravity(this.player, dt);
     }
     this.physicsWorld.integrate(this.player, dt);
+
+    // Fall off screen — instant death
+    if (this.player.y > GAME_HEIGHT) {
+      this.healthSystem.kill();
+      return;
+    }
 
     // Platform collision
     this.player.isGrounded = false;
@@ -227,8 +239,8 @@ export class GameScene extends Phaser.Scene {
           if (dmg > 0) {
             const applied = this.healthSystem.takeDamage(dmg);
             if (applied) {
-              const kb = this.healthSystem.computeKnockback(this.player.x, enemy.x, 150);
-              this.player.velocityX = kb;
+              const kb = this.healthSystem.computeKnockback(this.player.x, enemy.x, 300);
+              this.player.applyKnockback(kb);
             }
           }
         }
@@ -267,8 +279,8 @@ export class GameScene extends Phaser.Scene {
           const dmg = this.boss.rollDamage();
           const applied = this.healthSystem.takeDamage(dmg);
           if (applied) {
-            const kb = this.healthSystem.computeKnockback(this.player.x, this.boss.x, 200);
-            this.player.velocityX = kb;
+            const kb = this.healthSystem.computeKnockback(this.player.x, this.boss.x, 350);
+            this.player.applyKnockback(kb);
           }
         }
       }
@@ -312,7 +324,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Rendering
-    this.playerRenderer.update(this.player);
+    this.playerRenderer.update(this.player, this.healthSystem);
     for (let i = 0; i < this.enemies.length; i++) {
       this.enemyRenderers[i].update(this.enemies[i]);
     }

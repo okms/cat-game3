@@ -91,6 +91,29 @@ describe('HealthSystem', () => {
       expect(hs.isDead).toBe(false);
     });
 
+    it('should instantly kill the player bypassing cooldown', () => {
+      const hs = createSystem();
+
+      hs.takeDamage(10); // start cooldown
+      hs.kill(); // should bypass cooldown
+
+      expect(hs.isDead).toBe(true);
+      expect(hs.lives).toBe(2);
+      expect(hs.hp).toBe(0);
+    });
+
+    it('should trigger game over when kill exhausts last life', () => {
+      const hs = createSystem();
+
+      hs.kill(); // life 3 -> 2
+      hs.respawn();
+      hs.kill(); // life 2 -> 1
+      hs.respawn();
+      hs.kill(); // life 1 -> 0
+
+      expect(hs.isGameOver).toBe(true);
+    });
+
     it('should be game over when losing last life', () => {
       const hs = createSystem();
 
@@ -106,6 +129,31 @@ describe('HealthSystem', () => {
 
       expect(hs.lives).toBe(0);
       expect(hs.isGameOver).toBe(true);
+    });
+  });
+
+  describe('invulnerability', () => {
+    it('should be invulnerable during damage cooldown', () => {
+      const hs = createSystem();
+
+      hs.takeDamage(10);
+
+      expect(hs.isInvulnerable).toBe(true);
+    });
+
+    it('should not be invulnerable when cooldown expires', () => {
+      const hs = createSystem();
+
+      hs.takeDamage(10);
+      hs.update(1.1);
+
+      expect(hs.isInvulnerable).toBe(false);
+    });
+
+    it('should not be invulnerable initially', () => {
+      const hs = createSystem();
+
+      expect(hs.isInvulnerable).toBe(false);
     });
   });
 
