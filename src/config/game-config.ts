@@ -8,6 +8,7 @@ export const PHYSICS = {
   playerHP: 100,
   playerLives: 3,
   bossActivationRange: 400,
+  enemyDamage: 10,
   bossDamage: 25,
   bossDamageVariance: 0.15,
   damageCooldown: 1,

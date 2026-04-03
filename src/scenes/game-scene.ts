@@ -95,7 +95,7 @@ export class GameScene extends Phaser.Scene {
             patrolMinX: e.patrolMinX ?? e.x - 100,
             patrolMaxX: e.patrolMaxX ?? e.x + 100,
             speed: 80,
-            damage: PHYSICS.bossDamage,
+            damage: PHYSICS.enemyDamage,
           })
       );
 
@@ -127,7 +127,7 @@ export class GameScene extends Phaser.Scene {
     this.levelRenderer = new LevelRenderer(this, levelData);
     this.playerRenderer = new PlayerRenderer(this, this.player);
     this.enemyRenderers = this.enemies.map(
-      (e) => new EnemyRenderer(this, e, 'boss')
+      (e) => new EnemyRenderer(this, e, 'enemy')
     );
 
     this.bossRenderer = null;
