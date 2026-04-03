@@ -44,7 +44,10 @@ export class VictoryScene extends Phaser.Scene {
       color: '#ffd700',
     }).setOrigin(0.5);
 
-    const menuBtn = this.add.text(GAME_WIDTH / 2, 540, 'Press ENTER to Play Again', {
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const menuLabel = hasTouch ? 'Tap to Play Again' : 'Press ENTER to Play Again';
+
+    const menuBtn = this.add.text(GAME_WIDTH / 2, 540, menuLabel, {
       fontSize: '22px',
       color: '#ffffff',
     }).setOrigin(0.5);
@@ -60,5 +63,11 @@ export class VictoryScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-ENTER', () => {
       this.scene.start('MenuScene');
     });
+
+    if (hasTouch) {
+      this.input.on('pointerdown', () => {
+        this.scene.start('MenuScene');
+      });
+    }
   }
 }

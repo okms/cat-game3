@@ -40,7 +40,10 @@ export class GameOverScene extends Phaser.Scene {
       strokeThickness: 3,
     }).setOrigin(0.5);
 
-    const restartBtn = this.add.text(GAME_WIDTH / 2, 450, 'Press ENTER to Try Again', {
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const restartLabel = hasTouch ? 'Tap to Try Again' : 'Press ENTER to Try Again';
+
+    const restartBtn = this.add.text(GAME_WIDTH / 2, 450, restartLabel, {
       fontSize: '22px',
       color: '#ffffff',
       stroke: '#000000',
@@ -58,5 +61,11 @@ export class GameOverScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-ENTER', () => {
       this.scene.start('GameScene', {});
     });
+
+    if (hasTouch) {
+      this.input.on('pointerdown', () => {
+        this.scene.start('GameScene', {});
+      });
+    }
   }
 }
