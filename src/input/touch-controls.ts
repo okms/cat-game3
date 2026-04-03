@@ -7,21 +7,25 @@ const BUTTON_SIZE = 64;
 const BUTTON_MARGIN = 20;
 const JUMP_BUTTON_SIZE = 80;
 
-export class TouchControls {
-  private leftBtn!: Phaser.GameObjects.Arc;
-  private rightBtn!: Phaser.GameObjects.Arc;
-  private jumpBtn!: Phaser.GameObjects.Arc;
-  private leftLabel!: Phaser.GameObjects.Text;
-  private rightLabel!: Phaser.GameObjects.Text;
-  private jumpLabel!: Phaser.GameObjects.Text;
+interface ButtonZone {
+  x: number;
+  y: number;
+  radius: number;
+  visual: Phaser.GameObjects.Arc;
+}
 
-  private leftDown = false;
-  private rightDown = false;
-  private jumpDown = false;
+export class TouchControls {
+  private leftZone!: ButtonZone;
+  private rightZone!: ButtonZone;
+  private jumpZone!: ButtonZone;
 
   private allObjects: Phaser.GameObjects.GameObject[] = [];
+  private scene: Phaser.Scene;
 
-  constructor(private scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene) {
+    this.scene = scene;
+    // Enable multitouch — add 2 extra pointers (Phaser has 1 by default = 3 total)
+    scene.input.addPointer(2);
     this.createButtons();
   }
 
@@ -32,63 +36,68 @@ export class TouchControls {
     // Left button - bottom left
     const leftX = BUTTON_MARGIN + BUTTON_SIZE;
     const leftY = bottom;
-    this.leftBtn = this.scene.add.circle(leftX, leftY, BUTTON_SIZE, 0xffffff, BUTTON_ALPHA)
-      .setScrollFactor(0).setDepth(1000).setInteractive();
-    this.leftLabel = this.scene.add.text(leftX, leftY, '<', {
+    const leftBtn = this.scene.add.circle(leftX, leftY, BUTTON_SIZE, 0xffffff, BUTTON_ALPHA)
+      .setScrollFactor(0).setDepth(1000);
+    const leftLabel = this.scene.add.text(leftX, leftY, '<', {
       fontSize: '36px', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(1001).setAlpha(0.7);
+    this.leftZone = { x: leftX, y: leftY, radius: BUTTON_SIZE, visual: leftBtn };
 
     // Right button - next to left
     const rightX = leftX + BUTTON_SIZE * 2 + BUTTON_MARGIN;
     const rightY = bottom;
-    this.rightBtn = this.scene.add.circle(rightX, rightY, BUTTON_SIZE, 0xffffff, BUTTON_ALPHA)
-      .setScrollFactor(0).setDepth(1000).setInteractive();
-    this.rightLabel = this.scene.add.text(rightX, rightY, '>', {
+    const rightBtn = this.scene.add.circle(rightX, rightY, BUTTON_SIZE, 0xffffff, BUTTON_ALPHA)
+      .setScrollFactor(0).setDepth(1000);
+    const rightLabel = this.scene.add.text(rightX, rightY, '>', {
       fontSize: '36px', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(1001).setAlpha(0.7);
+    this.rightZone = { x: rightX, y: rightY, radius: BUTTON_SIZE, visual: rightBtn };
 
     // Jump button - bottom right
     const jumpX = cam.width - BUTTON_MARGIN - JUMP_BUTTON_SIZE;
     const jumpY = bottom;
-    this.jumpBtn = this.scene.add.circle(jumpX, jumpY, JUMP_BUTTON_SIZE, 0x44aaff, BUTTON_ALPHA)
-      .setScrollFactor(0).setDepth(1000).setInteractive();
-    this.jumpLabel = this.scene.add.text(jumpX, jumpY, 'JUMP', {
+    const jumpBtn = this.scene.add.circle(jumpX, jumpY, JUMP_BUTTON_SIZE, 0x44aaff, BUTTON_ALPHA)
+      .setScrollFactor(0).setDepth(1000);
+    const jumpLabel = this.scene.add.text(jumpX, jumpY, 'JUMP', {
       fontSize: '20px', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(1001).setAlpha(0.7);
+    this.jumpZone = { x: jumpX, y: jumpY, radius: JUMP_BUTTON_SIZE, visual: jumpBtn };
 
-    this.allObjects = [
-      this.leftBtn, this.leftLabel,
-      this.rightBtn, this.rightLabel,
-      this.jumpBtn, this.jumpLabel,
+    this.allObjects = [leftBtn, leftLabel, rightBtn, rightLabel, jumpBtn, jumpLabel];
+  }
+
+  private isPointerInZone(pointer: Phaser.Input.Pointer, zone: ButtonZone): boolean {
+    if (!pointer.isDown) return false;
+    const dx = pointer.x - zone.x;
+    const dy = pointer.y - zone.y;
+    return dx * dx + dy * dy <= zone.radius * zone.radius;
+  }
+
+  /** Poll all active pointers to determine which buttons are pressed */
+  getInput(): PlayerInput {
+    const pointers = [
+      this.scene.input.pointer1,
+      this.scene.input.pointer2,
+      this.scene.input.pointer3,
     ];
 
-    // Wire up touch events
-    this.wireButton(this.leftBtn, (down) => { this.leftDown = down; });
-    this.wireButton(this.rightBtn, (down) => { this.rightDown = down; });
-    this.wireButton(this.jumpBtn, (down) => { this.jumpDown = down; });
-  }
+    let left = false;
+    let right = false;
+    let jump = false;
 
-  private wireButton(btn: Phaser.GameObjects.Arc, setter: (down: boolean) => void): void {
-    btn.on('pointerdown', () => {
-      setter(true);
-      btn.setAlpha(BUTTON_ALPHA_PRESSED);
-    });
-    btn.on('pointerup', () => {
-      setter(false);
-      btn.setAlpha(BUTTON_ALPHA);
-    });
-    btn.on('pointerout', () => {
-      setter(false);
-      btn.setAlpha(BUTTON_ALPHA);
-    });
-  }
+    for (const pointer of pointers) {
+      if (!pointer || !pointer.isDown) continue;
+      if (this.isPointerInZone(pointer, this.leftZone)) left = true;
+      if (this.isPointerInZone(pointer, this.rightZone)) right = true;
+      if (this.isPointerInZone(pointer, this.jumpZone)) jump = true;
+    }
 
-  getInput(): PlayerInput {
-    return {
-      left: this.leftDown,
-      right: this.rightDown,
-      jump: this.jumpDown,
-    };
+    // Update visual feedback
+    this.leftZone.visual.setAlpha(left ? BUTTON_ALPHA_PRESSED : BUTTON_ALPHA);
+    this.rightZone.visual.setAlpha(right ? BUTTON_ALPHA_PRESSED : BUTTON_ALPHA);
+    this.jumpZone.visual.setAlpha(jump ? BUTTON_ALPHA_PRESSED : BUTTON_ALPHA);
+
+    return { left, right, jump };
   }
 
   setVisible(visible: boolean): void {
